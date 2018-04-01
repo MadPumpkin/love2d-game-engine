@@ -18,6 +18,7 @@ function Class:__new(class_name, attributes, tests, hooks, meta_attributes)
     instance = Class.__instance,
     subclass = Class.__subclass,
     setAttribute = Class.__setAttribute,
+    getAttribute = Class.__getAttribute,
   }
 
   local class = {
@@ -32,8 +33,9 @@ function Class:__new(class_name, attributes, tests, hooks, meta_attributes)
     meta_attributes = set:new(meta_attributes)
   }
   setmetatable(class, Class)
+
   class.attributes:join(set:new(public_attributes))
-  print(tableToString(class.attributes))
+  print(tostring(class.attributes))
   class.attributes:clean()
   class:__hook('class.new')
   return class
@@ -203,14 +205,6 @@ end
 
 function Class:__call(...)
   return self:instance(unpack(...))
-end
-
-
-function Class:__tostring()
-  local result = self.class_name..'\n'
-  result = result..tableToString(self)..'\n'
-
-  return result
 end
 
 

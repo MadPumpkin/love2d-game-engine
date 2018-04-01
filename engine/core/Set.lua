@@ -32,7 +32,7 @@ function Set:joined(other)
   for element, value in pairs(other:flatten()) do
     joined:add(element, value)
   end
-  print(tableToString(self))
+  print(self:stringify())
   return joined
 end
 
@@ -57,7 +57,7 @@ function Set:inverted()
 end
 
 function Set:cleaned()
-  return self:new(self:filter(self:bind_first(self.contains, self)))
+  return self:new(self:filter(self:bindFirst(self.contains, self)))
 end
 
 function Set:clean()
@@ -115,10 +115,10 @@ function Set:filter(method, ...)
       result[#result+1] = element
     end
   end
-  return result
+  return Set:new(result)
 end
 
-function Set:fold_right(method, axiom, ...)
+function Set:foldRight(method, axiom, ...)
   local result = {}
   for _, key in pairs(self.elements) do
     axiom = method(axiom, key, unpack(...))
@@ -127,7 +127,7 @@ function Set:fold_right(method, axiom, ...)
 end
 
 function Set:reduce(method, ...)
-  return self:fold_right(method, self:head(), self:tail(), unpack(...))
+  return self:foldRight(method, self:head(), self:tail(), unpack(...))
 end
 
 function Set:curry(f, g, ...)
@@ -137,14 +137,14 @@ function Set:curry(f, g, ...)
   end
 end
 
-function Set:bind_first(method, first, ...)
+function Set:bindFirst(method, first, ...)
   local arguments = unpack(arg)
   return function (second)
     return method(first, second, arguments)
   end
 end
 
-function Set:bind_second(method, second, ...)
+function Set:bindSecond(method, second, ...)
   local arguments = unpack(...)
   return function (first)
     return method(first, second, arguments)
@@ -179,7 +179,7 @@ Set.operator = {
 
 function Set:range(from, to)
   local result = {}
-  local step = self:bind_second(self.operator[(from < to) and 'add' or 'sub'], 1)
+  local step = self:bindSecond(self.operator[(from < to) and 'add' or 'sub'], 1)
   local element = from
   while element <= to do
     result[#result+1] = element
@@ -200,22 +200,26 @@ function Set:__unittest()
   end
 end
 
-function tableToString(table, depth)
-  local tabdepth = depth or 1
-  local tabulate = function(n) return string.rep('\t',n) end
+function Set:stringify(depth)
+  local tabdepth = depth or 0
+  local tabulate = function() return string.rep('\t',tabdepth) end
+  local nest = function() tabdepth = tabdepth + 1 ; return tabulate() end
+  local unnest = function() tabdepth = tabdepth - 1 ; return tabulate() end
+
   local result = ''
-  for key, value in pairs(table) do
+  for key, value in pairs(self.elements) do
+    result = result..nest()..tostring(key)..' : '..tostring(value)..'\n'
     if type(value) == 'table' then
-      result = result..tabulate(tabdepth)..tostring(key)..': '..'\n'..tableToString(value, tabdepth+1)
+      result = result..self:stringify(value, tabdepth+1)..'\n'
     else
-      result = result..tabulate(tabdepth)..tostring(key)..' = '..tostring(value)..'\n'
+      result = result..tostring(value)..'\n'
     end
   end
   return result
 end
 
 function Set:__tostring()
-  return tableToString(self)
+  return self:stringify()
 end
 
 return Set
