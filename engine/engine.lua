@@ -1,1 +1,3 @@
-return require('engine.EngineObject'):subclass('Engine')
+local node = require 'engine.node'
+
+return node
