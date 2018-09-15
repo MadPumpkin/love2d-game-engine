@@ -3,6 +3,7 @@ Functional.__index = Functional
 
 
 Functional.operator = {
+    neg = function(n) return not(n) end,
     mod = math.mod,
     pow = math.pow,
     add = function(n,m) return n + m end,
@@ -29,10 +30,9 @@ function Functional.to_string(table, depth)
       -- result = result..tabulate()..'<'..tostring(type(value))..'> '
 	    if type(value) == 'table' then
 	      result = result..tabulate()..tostring(key)..' : {'
-
         if tabdepth+1 > 0 then
-    	     result = result..'\n'
-         end
+          result = result..'\n'
+        end
         result = result..Functional.to_string(value, tabdepth+1)
         result = result..tabulate()..'}\n'
 	    else
@@ -62,14 +62,16 @@ function Functional.shallow_clone(set)
 end
 
 -- Target table is cloned recursively including the metatable
-function Functional.deep_clone(set)
+function Functional.deep_clone(set, clone_meta)
 	local clone
 	if type(set) == 'table' then
 		clone = {}
 		for k, v in next, set, nil do
 			clone[Functional.deep_clone(k)] = Functional.deep_clone(v)
 		end
-		setmetatable(clone, Functional.deep_clone(getmetatable(set)))
+    if clone_meta then
+		  setmetatable(clone, Functional.deep_clone(getmetatable(set)))
+    end
 	else
 		clone = set
 	end
@@ -83,12 +85,10 @@ end
 function Functional.join(set, other, hard_join, ...)
 	local joined = Functional.clone(set)
 	for k, v in pairs(other) do
-		if hard_join then
+    -- Hard join will add duplicates but replace any duplicate key
+    -- Soft join will not replace duplicates, the value in 'set' will be used
+		if hard_join or ((not hard_join) and not set[k]) then
 			joined[k] = v
-		else
-			if not set[k] then
-				joined[k] = v
-			end
 		end
 	end
 	if arg ~= nil then
@@ -144,7 +144,8 @@ function Functional.filter(set, method, ...)
   return result
 end
 
-function Functional.fold_right(set, method, initial_value, ...)
+-- foldl left -> right
+function Functional.fold_left(set, method, initial_value, ...)
   local value = initial_value or 0
   for _, key in pairs(set) do
     value = method(value, key, unpack(...))
@@ -152,16 +153,18 @@ function Functional.fold_right(set, method, initial_value, ...)
   return value
 end
 
-function Functional.fold_left(set, method, initial_value, ...)
-  return Functional.fold_right(Functional.reverse(set), method, initial_value or 0, ...)
+
+-- foldr left <- right
+function Functional.fold_right(set, method, initial_value, ...)
+  return Functional.fold_left(Functional.reverse(set), method, initial_value or 0, ...)
 end
 
 function Functional.accumulate(set, method, ...)
-	return Functional.fold_right(set, method, 0, ...)
+	return Functional.fold_left(set, method, 0, ...)
 end
 
 function Functional.reduce(set, method, ...)
-	return Functional.fold_left(set, method, 0, ...)
+	return Functional.fold_right(set, method, 0, ...)
 end
 
 function Functional.curry(f, g, ...)
