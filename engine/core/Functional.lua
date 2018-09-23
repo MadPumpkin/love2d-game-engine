@@ -137,11 +137,21 @@ end
 function Functional.filter(set, method, ...)
   local result = {}
   for key, element in pairs(set) do
-    if method(element, unpack(...)) then
+    if method(element, ...) then
       result[#result+1] = element
     end
   end
   return result
+end
+
+-- Whether set contains a value satisfying 'conditional(element, ...)'
+function Functional.satisfy(set, conditional, ...)
+  for key, element in pairs(set) do
+    if conditional(element, ...) then
+      return true
+    end
+  end
+  return false
 end
 
 -- foldl left -> right
@@ -193,7 +203,8 @@ function Functional.expand(method, ...)
 end
 
 function Functional.clean(set)
-	return Functional.clone(Functional.filter(Functional.bind_first(Functional.contains_value, set)))
+	-- return Functional.clone(Functional.filter(set, Functional.bind_first(Functional.contains_value, set)))
+	return Functional.filter(set, Functional.bind_first(Functional.contains_value, set))
 end
 
 return Functional

@@ -21,6 +21,22 @@ function ObjectOriented.__next_id()
   return id
 end
 
+function ObjectOriented.type(type_name)
+  return ObjectRegistry[type_name]
+end
+
+function ObjectOriented.type_exists(type_name)
+  return ObjectRegistry[type_name] ~= nil
+end
+
+function ObjectOriented.type_list()
+  local result = {}
+  for k,v in pairs(ObjectRegistry) do
+    result[#result+1] = ObjectRegistry[k]
+  end
+  return result
+end
+
 function ObjectOriented.is_object(table)
   if type(table) == 'table' then
     return table['__classtype'] ~= nil
@@ -37,22 +53,41 @@ function ObjectOriented.assert_object(object)
   end
 end
 
-function ObjectOriented.same_type(object, type)
-  return (object.__classid == type.__classid)
+function ObjectOriented.same_type(object, other)
+  return (object.__classid == other.__classid)
+end
+
+function ObjectOriented.is_typeclass(object)
+  return ObjectOriented.is_object(object) and not object.__isinstance
 end
 
 function ObjectOriented.is_instance(object)
   return ObjectOriented.is_object(object) and object.__isinstance
 end
 
-function ObjectOriented.is_type(object)
-  return ObjectOriented.is_object(object) and not object.__isinstance
+function ObjectOriented.descends_from(object, type)
+  if ObjectOriented.assert_object(object) then
+    local object_has_superclasses = (#object.superclasses > 0)
+    if object_has_superclasses then
+      if Functional.satisfy(object.superclasses, ObjectOriented.same_type, type) then
+        return true
+      else
+        for k,v in pairs(object.superclasses) do
+          if ObjectOriented.descends_from(ObjectOriented.type(v), type) then
+            return true
+          end
+        end
+      end
+    end
+    return false
+  end
+  return nil
 end
 
 function ObjectOriented.instance_of(object, type)
   if ObjectOriented.assert_object(object) and ObjectOriented.assert_object(type) then
     local object_is_instance = ObjectOriented.is_instance(object)
-    local type_is_type = not (ObjectOriented.is_instance(type))
+    local type_is_type = ObjectOriented.is_typeclass(type)
     if ObjectOriented.same_type(object, type) then
       return object_is_instance and type_is_type
     end
@@ -64,18 +99,23 @@ end
 
 function ObjectOriented.new(class_name)
   if class_name and type(class_name) == 'string' then
-    local class = {
-      __classid = ObjectOriented.__next_id(),
-      __classtype = true,
-      __isinstance = false,
-      class_name = class_name,
-      attributes = {},
-      superclasses = {},
-      subclasses = {}
-    }
-    setmetatable(class, ObjectOriented.instance_meta)
-    ObjectRegistry[class.class_name] = class
-    return class
+    if not ObjectRegistry[class_name] then
+      local class = {
+        __classid = ObjectOriented.__next_id(),
+        __classtype = true,
+        __isinstance = false,
+        class_name = class_name,
+        attributes = {},
+        superclasses = {},
+        subclasses = {}
+      }
+      setmetatable(class, ObjectOriented.instance_meta)
+      ObjectRegistry[class.class_name] = class
+      return class
+    else
+      error('Error in ObjectOriented.new(class_name, ...) : ObjectRegistry already contains a class named "'..class_name..'"')
+      return nil
+    end
   else
     --[[TODO: Replace with Expect]]
     error('Error in ObjectOriented.new(class_name, ...) : class_name invalid')
@@ -84,7 +124,7 @@ function ObjectOriented.new(class_name)
 end
 
 function ObjectOriented.subclass(base, class_name)
-  if ObjectOriented.is_type(base) then
+  if ObjectOriented.is_typeclass(base) then
     local type = ObjectOriented.new(class_name)
     ObjectOriented.add_superclass(type, base)
     return type
@@ -116,10 +156,13 @@ function ObjectOriented.name(class)
 end
 
 function ObjectOriented.instance(class)
-  local instance = Functional.deep_clone(class)
-  instance.attributes = Functional.deep_clone(class.attributes)
-  instance.subclasses = Functional.deep_clone(class.subclasses)
-  instance.superclasses = Functional.deep_clone(class.superclasses)
+  local instance = Functional.clone(class)
+  instance.attributes = Functional.clone(class.attributes)
+  instance.subclasses = Functional.clone(class.subclasses)
+  instance.superclasses = Functional.clone(class.superclasses)
+  instance.class_name = ObjectOriented.name(class)
+  instance.__classid = ObjectOriented.identity(class)
+  instance.__classtype = true
   instance.__isinstance = true
   setmetatable(instance, ObjectOriented.instance_meta)
   return instance

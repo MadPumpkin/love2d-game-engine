@@ -1,5 +1,7 @@
 local engine = require 'engine.engine'
 local Functional = require 'engine.core.Functional'
+local ObjectOriented = require 'engine.core.ObjectOriented'
+local Set = require 'engine.core.Set'
 
 function love.load()
 
